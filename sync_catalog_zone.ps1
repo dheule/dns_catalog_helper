@@ -22,7 +22,9 @@
 # parameters 
 #----------------------------------------------------------------------------------------
 param(
-  [string]$catalog = ""
+  [string]$catalog = "",
+  [switch]$dszones = $false,
+  [switch]$dryrun = $false
 );
 
 #----------------------------------------------------------------------------------------
@@ -72,6 +74,8 @@ Usage: sync_catalog_zone.ps1 Arguments
        Argument    - Description
        -----------   -----------
        catalog       - The DNS Name of the Catalog Zone
+       dszones       - Use DsIntegrated Zones (switch)
+       dryrun        - Only print what to do, not update the catalog zone (switch)
 "@;
 }
 
@@ -79,6 +83,44 @@ Usage: sync_catalog_zone.ps1 Arguments
 # Main script ;-)
 #----------------------------------------------------------------------------------------
 
-if ( ($catalog.Length -eq 0) {
+if ( $catalog.Length -eq 0) {
   Show-Usage;
+  Exit 1
+}
+
+
+$zonelistdns = Get-DnsServerZone | Where-Object { $_.ZoneType -eq "Primary" -and 
+                                                  -not $_.IsAutoCreated -and 
+                                                  $_.IsDsIntegrated -eq $dszones -and
+                                                  $_.ZoneName -notin ($catalog,"TrustAnchors")}
+#$zonelistdns
+
+$zonelistcatalog = (Get-DnsServerResourceRecord -ZoneName $catalog -RRType Ptr | where HostName -Like *.zones)
+#$zonelistcatalog 
+
+# Find the zones to delete in the catalog
+ForEach($z in $zonelistcatalog){
+    $myzn = $z.RecordData.PtrDomainName -replace ".$"
+    $zf = $zonelistdns | Where-Object { $_.ZoneName -eq $myzn }
+    if ( $zf -eq $null ) {
+        Write-Host "Removing $myzn with name $($z.HostName) from catalog"
+        if ( -not $dryrun ) {
+            $z | Remove-DnsServerResourceRecord -ZoneName $catalog -Force
+        }
+    }
+
+}
+
+
+# Find the zones to add to the catalog
+ForEach($z in $zonelistdns){
+    $cz = $zonelistcatalog | Where-Object { $x = $_.RecordData.PtrDomainName -replace ".$"; $x -eq $z.ZoneName }
+    if ( $cz -eq $null ) {
+        $mynfz = Get-NfzString $z.ZoneName
+        Write-Host "Adding zone $($z.ZoneName) with hash $mynfz"
+        if ( -not $dryrun ) {
+            Add-DnsServerResourceRecord -Name "$($mynfz).zones" -Ptr -ZoneName $catalog -PtrDomainName $z.ZoneName
+        }
+    }
+    
 }
