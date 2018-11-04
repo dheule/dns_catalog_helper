@@ -77,7 +77,7 @@ Usage: sync_catalog_zone.ps1 Arguments
        catalog       - The DNS Name of the Catalog Zone
        dszones       - Use DsIntegrated Zones (switch)
        dryrun        - Only print what to do, not update the catalog zone (switch)
-	   wait          - Wait for an enter at the end of the script to show the output
+       wait          - Wait for an enter at the end of the script to show the output
 "@;
 }
 
