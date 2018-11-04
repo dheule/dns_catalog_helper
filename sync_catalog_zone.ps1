@@ -24,7 +24,8 @@
 param(
   [string]$catalog = "",
   [switch]$dszones = $false,
-  [switch]$dryrun = $false
+  [switch]$dryrun = $false,
+  [switch]$wait = $false
 );
 
 #----------------------------------------------------------------------------------------
@@ -123,4 +124,8 @@ ForEach($z in $zonelistdns){
         }
     }
     
+}
+
+if ( $wait -eq $true ) {
+	$e = Read-Host "Hit enter to close this window"
 }
